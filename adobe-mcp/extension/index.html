@@ -1,0 +1,17 @@
+<!doctype html>
+<html><body style="font:12px sans-serif;color:#ccc;background:#333">
+<div id="s">checking…</div>
+<script>
+// Optional status panel. Opening it also (re)starts the hidden server if the host didn't auto-start it.
+window.__adobe_cep__.requestOpenExtension('com.adobemcp.bridge.server', '');
+const PORTS = { PHXS: 8701, PHSP: 8701, ILST: 8702, AEFT: 8703, PPRO: 8704, AUDT: 8705 };
+const host = JSON.parse(window.__adobe_cep__.getHostEnvironment()).appName, port = PORTS[host];
+const s = document.getElementById('s');
+function ping() {
+  require('http').request({ host: '127.0.0.1', port, method: 'POST', headers: { 'x-adobe-mcp': '1' } },
+    r => { r.resume(); s.textContent = `✅ MCP Bridge running: ${host} on port ${port}. You can close this panel.`; })
+    .on('error', () => { s.textContent = '⏳ starting… (if this stays, restart the app)'; }).end('1');
+}
+ping(); setInterval(ping, 5000);
+</script>
+</body></html>

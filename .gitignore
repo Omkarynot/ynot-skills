@@ -1,0 +1,6 @@
+node_modules/
+pantone_cache.json
+*_work/
+*.log
+call-out.png
+.DS_Store

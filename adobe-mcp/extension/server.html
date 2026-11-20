@@ -1,0 +1,43 @@
+<!doctype html>
+<html><body><script>
+// Hidden background extension: starts with the host app, no panel to close.
+const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
+const PORTS = { PHXS: 8701, PHSP: 8701, ILST: 8702, AEFT: 8703, PPRO: 8704, AUDT: 8705 };
+const host = JSON.parse(window.__adobe_cep__.getHostEnvironment()).appName;
+const port = PORTS[host];
+const LOG = path.join(os.tmpdir(), 'adobe-mcp-bridge.log');
+const log = m => { try { fs.appendFileSync(LOG, `${new Date().toISOString()} ${host} ${m}\n`); } catch (e) {} };
+
+// never die on a stray error
+process.on('uncaughtException', e => log('uncaught: ' + (e && e.stack || e)));
+window.onerror = m => { log('onerror: ' + m); return true; };
+
+const server = http.createServer((req, res) => {
+  try {
+    // Security: block browser CSRF. Browsers send Origin and can't add custom headers without a preflight, which we never answer.
+    if (req.method !== 'POST' || req.headers.origin || req.headers['x-adobe-mcp'] !== '1') {
+      res.writeHead(403); return res.end('forbidden');
+    }
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+      // keep-alive: long jobs (renders) would otherwise trip client body timeouts; client trims the spaces
+      const ka = setInterval(() => res.write(' '), 30000);
+      const jsx = 'try{String(eval(' + JSON.stringify(body) + '))}catch(e){"ERROR: "+e.toString()+" (line "+e.line+")"}';
+      window.__adobe_cep__.evalScript(jsx, out => { clearInterval(ka); res.end(String(out)); });
+    });
+  } catch (e) {
+    log('request: ' + e.stack);
+    try { res.writeHead(500); res.end('ERROR: bridge ' + e.message); } catch (_) {}
+  }
+});
+server.requestTimeout = 0;   // Node's default 300s would kill long scripts
+server.timeout = 0;
+server.on('clientError', (e, sock) => sock.destroy());
+// port busy (e.g. PS 2026 + 2027 both open) or any listen failure → keep retrying
+server.on('error', e => { log('listen: ' + e.code); setTimeout(listen, 5000); });
+server.on('listening', () => log('listening on 127.0.0.1:' + port));
+function listen() { try { server.listen(port, '127.0.0.1'); } catch (e) { log('listen throw: ' + e.message); setTimeout(listen, 5000); } }
+listen();
+</script></body></html>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.adobemcp.bridge" ExtensionBundleVersion="1.1.0">
+  <ExtensionList>
+    <Extension Id="com.adobemcp.bridge.server" Version="1.1.0"/>
+    <Extension Id="com.adobemcp.bridge.panel" Version="1.1.0"/>
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="PHXS" Version="[0.0,99.9]"/>
+      <Host Name="PHSP" Version="[0.0,99.9]"/>
+      <Host Name="ILST" Version="[0.0,99.9]"/>
+      <Host Name="AEFT" Version="[0.0,99.9]"/>
+      <Host Name="PPRO" Version="[0.0,99.9]"/>
+      <Host Name="AUDT" Version="[0.0,99.9]"/>
+    </HostList>
+    <LocaleList><Locale Code="All"/></LocaleList>
+    <RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="9.0"/></RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <!-- hidden background server: auto-starts with the app, nothing to close -->
+    <Extension Id="com.adobemcp.bridge.server">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./server.html</MainPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>false</AutoVisible>
+          <StartOn>
+            <Event>applicationActivate</Event>
+            <Event>com.adobe.csxs.events.ApplicationActivate</Event>
+            <Event>com.adobe.csxs.events.ApplicationInitialized</Event>
+          </StartOn>
+        </Lifecycle>
+        <UI><Type>Custom</Type><Geometry><Size><Height>1</Height><Width>1</Width></Size></Geometry></UI>
+      </DispatchInfo>
+    </Extension>
+    <!-- optional status panel (Window > Extensions > MCP Bridge); also starts the server as a fallback -->
+    <Extension Id="com.adobemcp.bridge.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>MCP Bridge</Menu>
+          <Geometry><Size><Height>80</Height><Width>300</Width></Size></Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>
