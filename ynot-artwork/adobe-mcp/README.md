@@ -13,14 +13,11 @@ It refuses browser requests (Origin header / no `x-adobe-mcp` header), so web pa
 
 `prelude.jsx` is sent in front of every script (JSON polyfill, error formatting, rollback, alert suppression). ES3 only.
 
-## Test
-With Photoshop or Illustrator open (a document open in it for the preview check):
+## Build and test
+`server.bundle.mjs` is what ships (one file, no node_modules needed). After editing `server.mjs` or `prelude.jsx`:
 ```sh
-node test/selftest.mjs photoshop      # or illustrator
-node test/call.mjs status             # call any tool by hand
+npm install          # once
+npm test             # rebuild the bundle + self-test (Photoshop or Illustrator open; pass the app name: npm test -- illustrator)
+node test/call.mjs status    # call any tool by hand
 ```
-Skill check (Illustrator open): `node test/call.mjs run_jsx` with `file` = `ynot-artwork-spec/test/selftest.jsx` and
-`include` = `ynot-artwork-spec/scripts/yn_lib.jsx`; it must print `ok`.
-```
-```
-After changing `extension/`, restart the Adobe app. After changing `server.mjs`/`prelude.jsx`, restart Claude.
+After changing `extension/`, re-run setup and restart the Adobe app. After changing the server, restart Claude.

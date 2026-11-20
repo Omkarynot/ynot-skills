@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "adobe": { "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/adobe-mcp/server.bundle.mjs"] }
+  }
+}

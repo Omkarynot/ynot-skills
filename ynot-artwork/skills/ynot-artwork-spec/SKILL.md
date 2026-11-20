@@ -24,8 +24,9 @@ paths built from it, because the session's working directory can be anywhere. Wo
 Save the final .ai/.pdf where the user says.
 
 **Before starting, check:**
-- The `adobe` MCP is connected: call its `status` tool; Illustrator must show as running. If the tool is missing,
-  tell the user to install the adobe-mcp from the ynot-skills repo (see its README) and restart Claude.
+- The `adobe` MCP is connected: call its `status` tool; Illustrator must show as running. If the tool is missing or
+  Illustrator shows "not running" while it is open, run the `ynot-setup` skill (plugin `ynot-artwork`), then ask the
+  user to restart Illustrator (and Claude Desktop/Codex if that's what they use).
 - Chrome is signed in to connect.pantone.com (needed for Pantone matching).
 
 **Self-test** (after changing any script): `run_jsx({app:"illustrator", file:"<skill>/test/selftest.jsx", include:["<skill>/scripts/yn_lib.jsx"], rollbackOnError:true})` must return `ok`.

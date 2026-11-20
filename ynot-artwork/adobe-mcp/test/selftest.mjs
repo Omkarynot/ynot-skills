@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const app = process.argv[2] || 'photoshop';
 const c = new Client({ name: 'selftest', version: '1' });
-await c.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../server.mjs', import.meta.url))] }));
+await c.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../server.bundle.mjs', import.meta.url))] }));
 const call = async (name, args) => { const r = await c.callTool({ name, arguments: args }); return { ...r, text: r.content.find(x => x.type === 'text')?.text }; };
 
 const st = await call('status', {}); console.log(st.text);

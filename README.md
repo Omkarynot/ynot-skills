@@ -1,42 +1,41 @@
 # Y-Not skills
 
-Private. Claude skills and MCP servers for the Y-Not design team. **Each skill or MCP lives in its own folder.**
-Change only the folder you are working on, and commit it on its own.
+Claude plugins for the Y-Not design team. Each plugin is one folder; today there is one:
 
-| Folder | What it is |
+| Plugin | What it does |
 |---|---|
-| `adobe-mcp/` | MCP server + Adobe "MCP Bridge" extension. Lets Claude run scripts in Illustrator, Photoshop, After Effects, Premiere and Audition, and preview the artwork. |
-| `ynot-artwork-spec/` | Skill: builds a Y-Not artwork / spec sheet in Illustrator from a mockup PPT + logos (Design SOP). Needs `adobe-mcp`. |
+| `ynot-artwork/` | Builds Y-Not artwork / spec sheets in Illustrator from a mockup PPT + logos (Design SOP): Pantone matching, logo sizes, mockup dimensions, box dielines, QC. Includes the **adobe MCP** that lets Claude drive Illustrator, Photoshop, After Effects, Premiere and Audition. |
 
-## Install (Windows or Mac)
+## Install on a PC (Windows or Mac)
 
-Needs: [Node.js 18+](https://nodejs.org), Git, Adobe Illustrator (and/or Photoshop), Python 3 with `pip install python-pptx`,
-and Chrome signed in to connect.pantone.com for Pantone matching.
+Needs [Node.js 18+](https://nodejs.org) and Adobe Illustrator. For PPT reading: Python 3 + `pip install python-pptx`.
+For Pantone matching: Chrome signed in to connect.pantone.com.
 
-```sh
-git clone https://github.com/Omkarynot/ynot-skills.git
-cd ynot-skills
-node install.mjs
+**Claude Code** (terminal, or the Code tab of the Claude desktop app). Type in Claude:
 ```
+/plugin install ynot-artwork --marketplace Omkarynot/ynot-skills
+```
+(older Claude Code: `/plugin marketplace add Omkarynot/ynot-skills`, then `/plugin install ynot-artwork@ynot-skills`)
 
-The installer links the skills into `~/.claude/skills` (and `~/.codex/skills`), links the Bridge extension into Adobe's
-CEP folder, allows unsigned CEP extensions, and registers the `adobe` MCP with Claude Code, Claude Desktop and Codex.
-Anything it replaces is moved or copied to `~/.ynot-skills-backup` first. Then **restart Illustrator/Photoshop and Claude**.
+Then ask Claude: **"run ynot setup"**. It installs the Adobe extension and also sets up Claude Desktop chat and
+Codex if they're on the PC. Restart Illustrator/Photoshop afterwards. That's all.
 
-- Mac: allow Screen Recording for Claude/Terminal (System Settings > Privacy & Security) for the `screenshot` tool.
-- Claude Desktop chat app: skills are uploaded there separately: zip the skill folder and add it in Settings > Capabilities.
-- Check it works: in Claude, ask it to call the adobe `status` tool; Illustrator should be listed with its version.
+**Only Claude Desktop chat or Codex, no Claude Code:** download this repo (Code > Download ZIP), unzip, and run
+```
+node ynot-skills-main/ynot-artwork/setup.mjs
+```
+then restart Illustrator and the app. For Claude Desktop chat, also upload `~/.ynot/ynot-artwork-spec.zip` in
+Settings > Capabilities > Skills.
+
+Check: ask Claude to call the adobe `status` tool; Illustrator should be listed with its version.
 
 ## Update
+Claude Code: `/plugin` > Marketplaces > ynot-skills > Update (or turn on auto-update there). After an update Claude
+reminds you to "run ynot setup" again if the Adobe extension changed. Desktop/Codex: download again and re-run `setup.mjs`.
 
-```sh
-git pull
-```
-Everything is linked, so that's all (restart Claude if a skill changed; restart the Adobe app if `adobe-mcp/extension` changed).
-
-## Adding a new skill or MCP
-1. New folder at the top level, e.g. `ynot-hang-tag/` with a `SKILL.md` (skills) or its own `package.json` (MCPs).
-2. Keep everything it needs inside that folder. No absolute paths to someone's PC: use the skill's base directory.
-3. Run `node install.mjs` again to link it, test it, then commit just that folder.
-
-Confidential: the SOP rules and `ynot-artwork-spec/references/` come from internal Y-Not artworks. Keep this repo private.
+## For whoever edits the plugin
+- Everything for a plugin stays inside its folder. No absolute paths to someone's PC.
+- `ynot-artwork/adobe-mcp`: edit `server.mjs` / `prelude.jsx`, then `npm install` once and `npm test` (rebuilds
+  `server.bundle.mjs`, the file that ships, and runs the self-test; Illustrator or Photoshop must be open).
+- Skill check: `ynot-artwork/skills/ynot-artwork-spec/test/selftest.jsx` (see the skill) must return `ok`.
+- `claude plugin validate .` before pushing. Each pushed commit is a new plugin version.

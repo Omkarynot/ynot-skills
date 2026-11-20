@@ -1,0 +1,14 @@
+{
+  "name": "adobe-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "scripts": {
+    "build": "npx --yes esbuild@0.24.2 server.mjs --bundle --platform=node --format=esm --target=node18 --outfile=server.bundle.mjs \"--banner:js=// Built from server.mjs by npm run build. Do not edit; edit server.mjs.\"",
+    "test": "npm run build && node test/selftest.mjs"
+  }
+}

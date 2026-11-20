@@ -1,0 +1,6 @@
+{
+  "name": "ynot-artwork",
+  "description": "Y-Not artwork / spec sheets in Illustrator from a mockup PPT + logos (Design SOP), plus the adobe MCP that drives Illustrator, Photoshop, After Effects, Premiere and Audition. Run the ynot-setup skill once per PC.",
+  "author": { "name": "Y-Not Design & Manufacturing" },
+  "homepage": "https://github.com/Omkarynot/ynot-skills"
+}

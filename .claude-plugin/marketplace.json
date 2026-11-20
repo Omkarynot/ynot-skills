@@ -1,0 +1,12 @@
+{
+  "name": "ynot-skills",
+  "owner": { "name": "Y-Not Design & Manufacturing" },
+  "description": "Y-Not design team plugins for Claude",
+  "plugins": [
+    {
+      "name": "ynot-artwork",
+      "source": "./ynot-artwork",
+      "description": "Y-Not artwork / spec sheets in Illustrator from a mockup PPT + logos, with the Adobe MCP (Illustrator, Photoshop, After Effects, Premiere, Audition)"
+    }
+  ]
+}
