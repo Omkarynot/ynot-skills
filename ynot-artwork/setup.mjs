@@ -89,7 +89,8 @@ if (existsSync(dirname(desk))) {
 const zip = join(YNOT, 'ynot-artwork-spec.zip');
 try {
   rmSync(zip, { force: true });
-  if (WIN) execFileSync('powershell', ['-NoProfile', '-Command', `Compress-Archive -LiteralPath '${SKILL}' -DestinationPath '${zip}' -Force`], { stdio: 'pipe' });
+  // Windows 10+ tar writes a standard zip with "/" paths (PowerShell 5's Compress-Archive writes "\", which breaks elsewhere)
+  if (WIN) execFileSync(join(process.env.SystemRoot || 'C:/Windows', 'System32', 'tar.exe'), ['-a', '-cf', zip, basename(SKILL)], { cwd: dirname(SKILL), stdio: 'pipe' });
   else execFileSync('zip', ['-qr', zip, basename(SKILL)], { cwd: dirname(SKILL) });
   say(`skill zip for the chat app: ${zip} (upload it in Settings > Capabilities > Skills)`);
 } catch (e) { say('skill zip failed: ' + e.message.split('\n')[0]); }
