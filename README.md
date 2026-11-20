@@ -8,7 +8,8 @@ Claude plugins for the Y-Not design team. Each plugin is one folder; today there
 
 ## Install (Windows or Mac, 2 minutes)
 
-Open Claude Code, Codex or the Claude desktop app (Code tab), paste this and answer its questions:
+Open the Claude desktop app, click the **Code** tab (the chat window can't install software), paste this and answer its
+questions. Codex or Claude Code in a terminal work too:
 
 > Install the Y-Not artwork tools by following https://github.com/Omkarynot/ynot-skills/blob/main/INSTALL.md
 

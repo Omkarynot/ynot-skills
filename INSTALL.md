@@ -1,12 +1,19 @@
 # Install the Y-Not artwork tools
 
-**For people:** open Claude Code, Codex, or the Claude desktop app (Code tab), paste this, and answer its questions:
+**For people:** open the Claude desktop app, click the **Code** tab (not the chat), paste this and answer its questions.
+Codex or Claude Code in a terminal work too.
 
 > Install the Y-Not artwork tools by following https://github.com/Omkarynot/ynot-skills/blob/main/INSTALL.md
 
 ---
 
 ## For the AI agent doing the install
+
+**First: can you run terminal commands on the user's computer?** If you can't (for example you are the Claude
+Desktop *chat* window, or claude.ai in a browser), don't try the steps below. Tell the user, in plain words:
+"I can't install things from this chat window. In this same Claude app, click the **Code** tab at the top, choose a
+folder (any folder, e.g. Documents), and paste the same sentence there. It will install everything, including what
+this chat window needs." Then stop.
 
 Works on macOS and Windows. Explain each step to the user in one plain sentence, ask before installing software,
 and never ask for passwords (if a step needs one, the user types it themselves).
