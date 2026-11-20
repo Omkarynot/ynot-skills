@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { INSTRUCTIONS, registerYnot } from './ynot.mjs';
 
 const PORTS = { photoshop: 8701, illustrator: 8702, aftereffects: 8703, premiere: 8704, audition: 8705 };
 const run = promisify(execFile);
@@ -32,7 +33,8 @@ __mcpR = __mcpOut(eval(${q(code)})); } catch (__e) { __mcpRollback(__mcpD); __mc
 __mcpRestore(); __mcpR;`;
 }
 
-const server = new McpServer({ name: 'adobe', version: '1.2.0' });
+const server = new McpServer({ name: 'adobe', version: '1.3.0' }, INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {});
+registerYnot(server); // artwork_guide, files, view_image, read_pptx, pantone_score (when the skill folder is next to the server)
 const unreachable = app => `${app} isn't reachable. Open it (the MCP Bridge extension starts with the app), or call the status tool.`;
 const fail = text => ({ content: [{ type: 'text', text }], isError: true });
 

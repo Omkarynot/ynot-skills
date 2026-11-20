@@ -10,12 +10,11 @@ prints one line saying what to restart. Use this skill when that line said it fa
 
 1. Run: `node "${CLAUDE_PLUGIN_ROOT}/setup.mjs"` and show the user its output.
    It copies the Adobe extension into the CEP extensions folder, enables unsigned CEP extensions (PlayerDebugMode),
-   copies the adobe MCP to `~/.ynot/adobe-mcp` and registers it for Claude Desktop and Codex, copies the artwork skill
-   to `~/.codex/skills`, and writes `~/.ynot/ynot-artwork-spec.zip` for the Claude Desktop chat app.
+   copies the adobe MCP (which also serves the artwork skill through its `artwork_guide` tool) to `~/.ynot` and
+   registers it for Claude Desktop and Codex, and copies the artwork skill to `~/.codex/skills`. No skill upload needed.
    Anything it replaces is backed up to `~/.ynot-skills-backup` first.
 2. Tell the user to restart Illustrator / Photoshop (the extension loads at app start) and Claude Desktop / Codex if they use them.
-3. Claude Desktop chat only: upload `~/.ynot/ynot-artwork-spec.zip` in Settings > Capabilities > Skills (Claude can't do this step).
-4. Check: after the restart, call the adobe MCP `status` tool; the open Adobe apps must show their version.
+3. Check: after the restart, call the adobe MCP `status` tool; the open Adobe apps must show their version.
 
 If `node` is missing, the user must install Node.js 18+ from nodejs.org first. On a Mac, the `screenshot` tool also needs
 Screen Recording permission for Claude (System Settings > Privacy & Security).

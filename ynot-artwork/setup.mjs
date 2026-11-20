@@ -3,7 +3,7 @@
 // The plugin's SessionStart hook runs it with --auto, so installing the plugin is all a user has to do.
 //   - Adobe: copies the MCP Bridge extension into the CEP extensions folder, enables unsigned CEP extensions.
 //   - Claude Desktop + Codex: copies the adobe MCP to ~/.ynot/adobe-mcp and registers it; copies the skill to
-//     ~/.codex/skills; writes ~/.ynot/ynot-artwork-spec.zip to upload in the Claude Desktop chat app.
+//     ~/.codex/skills. The MCP also serves the skill (artwork_guide), so the Desktop chat window needs no upload.
 //   - Claude Code: when the plugin is installed it brings the skill + MCP itself (older copies are removed so nothing
 //     shows twice); run from a plain download of the repo it registers the MCP and copies the skill instead.
 // Replaced folders/configs are backed up to ~/.ynot-skills-backup first.
@@ -89,6 +89,8 @@ log('adobe MCP runtime');
 mkdirSync(join(YNOT, 'adobe-mcp'), { recursive: true });
 for (const f of ['server.bundle.mjs', 'prelude.jsx']) cpSync(join(MCP, f), join(YNOT, 'adobe-mcp', f));
 say(`copied  ${join(YNOT, 'adobe-mcp')}`);
+// The MCP serves the skill itself (artwork_guide + scripts), so the Desktop chat window needs no skill upload.
+place(SKILL, join(YNOT, 'skills', 'ynot-artwork-spec'), true);
 
 log('Claude Desktop');
 const hasDesk = existsSync(dirname(DESK));
@@ -103,7 +105,7 @@ try {
   // Windows 10+ tar writes a standard zip with "/" paths (PowerShell 5's Compress-Archive writes "\", which breaks elsewhere)
   if (WIN) execFileSync(join(process.env.SystemRoot || 'C:/Windows', 'System32', 'tar.exe'), ['-a', '-cf', ZIP, basename(SKILL)], { cwd: dirname(SKILL), stdio: 'pipe' });
   else execFileSync('zip', ['-qr', ZIP, basename(SKILL)], { cwd: dirname(SKILL) });
-  say(`skill zip for the chat app: ${ZIP} (upload it in Settings > Capabilities > Skills)`);
+  say(`skill zip (optional, for an org-wide skill upload): ${ZIP}`);
 } catch (e) { say('skill zip failed: ' + e.message.split('\n')[0]); }
 
 log('Codex');
@@ -136,5 +138,5 @@ mkdirSync(YNOT, { recursive: true });
 writeFileSync(STAMP, JSON.stringify({ version: VERSION, at: new Date().toISOString(), from: fwd(ROOT) }, null, 2));
 const apps = ['Illustrator/Photoshop', hasDesk && 'Claude Desktop', hasCodex && 'Codex'].filter(Boolean).join(', ');
 if (AUTO) console.log(`Y-Not artwork plugin: ${prev ? 'updated' : 'installed'} the Adobe MCP Bridge${hasDesk ? ', Claude Desktop' : ''}${hasCodex ? ', Codex' : ''} setup (version ${VERSION}). ` +
-  `Tell the user once, in plain words: restart ${apps} so it takes effect` + (hasDesk ? `; and for the Claude Desktop chat app, upload ${ZIP} in Settings > Capabilities > Skills (one time)` : '') + '.');
-else console.log(`\nDone (version ${VERSION}). Restart ${apps}.` + (hasDesk ? ` Claude Desktop chat app: upload ${ZIP} in Settings > Capabilities > Skills (one time).` : ''));
+  `Tell the user once, in plain words: restart ${apps} so it takes effect.`);
+else console.log(`\nDone (version ${VERSION}). Restart ${apps}.`);

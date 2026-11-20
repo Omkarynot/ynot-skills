@@ -9,6 +9,6 @@
   },
   "scripts": {
     "build": "npx --yes esbuild@0.24.2 server.mjs --bundle --platform=node --format=esm --target=node18 --outfile=server.bundle.mjs \"--banner:js=// Built from server.mjs by npm run build. Do not edit; edit server.mjs.\"",
-    "test": "npm run build && node test/selftest.mjs"
+    "test": "npm run build && node test/ynot-tools.mjs && node test/selftest.mjs"
   }
 }

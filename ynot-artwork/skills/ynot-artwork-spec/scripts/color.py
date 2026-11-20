@@ -2,7 +2,7 @@
   python color.py <hex> <L> <a> <b>          -> logo hex as Lab (D50) + CIEDE2000 distance to a Pantone Lab
   python color.py lookup <hex>               -> cached Pantone Connect result for that exact hex, or "miss"
   python color.py save <hex> <code> <L> <a> <b>   -> store a Pantone Connect best match (code e.g. "1795 C")
-The cache (pantone_cache.json next to this file, not in git) only holds values read from Pantone Connect.
+The cache (~/.ynot/pantone_cache.json, shared with the adobe MCP) only holds values read from Pantone Connect.
 Pantone Connect reports Lab under D50, so the sRGB (D65) conversion is Bradford-adapted to D50.
 ΔE00 guide: <1 identical, 1-2 very close, 2-3 close, >3 noticeably different (flag it to the user)."""
 import sys, math, os, json
@@ -44,7 +44,7 @@ def de2000(l1, l2):
     RT = -2 * math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7)) * math.sin(math.radians(60 * math.exp(-((hbp - 275) / 25) ** 2)))
     return math.sqrt((dLp / SL) ** 2 + (dCp / SC) ** 2 + (dHp / SH) ** 2 + RT * (dCp / SC) * (dHp / SH))
 
-CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pantone_cache.json')
+CACHE = os.path.join(os.path.expanduser('~'), '.ynot', 'pantone_cache.json')  # shared with the adobe MCP's pantone_score
 
 def _load():
     try: return json.load(open(CACHE, encoding='utf-8'))
@@ -57,6 +57,7 @@ if __name__ == '__main__':
     elif len(sys.argv) >= 7 and sys.argv[1] == 'save':
         h = sys.argv[2].lstrip('#').upper(); code = ' '.join(sys.argv[3:-3]); lab = tuple(map(float, sys.argv[-3:]))
         c = _load(); c[h] = {'code': code, 'lab': lab, 'dE00': round(de2000(hex_to_lab(h), lab), 2)}
+        os.makedirs(os.path.dirname(CACHE), exist_ok=True)
         json.dump(c, open(CACHE, 'w', encoding='utf-8'), indent=0, sort_keys=True)
         print('saved', h, c[h])
     elif len(sys.argv) == 5:

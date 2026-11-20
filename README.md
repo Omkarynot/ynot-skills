@@ -13,7 +13,8 @@ questions. Codex or Claude Code in a terminal work too:
 
 > Install the Y-Not artwork tools by following https://github.com/Omkarynot/ynot-skills/blob/main/INSTALL.md
 
-The agent installs Node.js if needed, the plugin, the Adobe extension, and the Claude Desktop / Codex setup.
+The agent installs Node.js if needed, the plugin, the Adobe extension, and the Claude Desktop / Codex setup. Nothing to
+upload: the adobe MCP carries the artwork skill, so the Desktop chat window can make artworks too.
 Then quit and reopen Illustrator. Manual steps are in [INSTALL.md](INSTALL.md).
 
 Already have Claude Code? `/plugin install ynot-artwork --marketplace Omkarynot/ynot-skills` is enough: the plugin

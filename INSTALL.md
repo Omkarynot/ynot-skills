@@ -12,8 +12,8 @@ Codex or Claude Code in a terminal work too.
 **First: can you run terminal commands on the user's computer?** If you can't (for example you are the Claude
 Desktop *chat* window, or claude.ai in a browser), don't try the steps below. Tell the user, in plain words:
 "I can't install things from this chat window. In this same Claude app, click the **Code** tab at the top, choose a
-folder (any folder, e.g. Documents), and paste the same sentence there. It will install everything, including what
-this chat window needs." Then stop.
+folder (any folder, e.g. Documents), and paste the same sentence there. It will install everything, and afterwards this chat
+window can make artworks too." Then stop.
 
 Works on macOS and Windows. Explain each step to the user in one plain sentence, ask before installing software,
 and never ask for passwords (if a step needs one, the user types it themselves).
@@ -28,14 +28,14 @@ and never ask for passwords (if a step needs one, the user types it themselves).
    - macOS: `mkdir -p ~/.ynot && cd ~/.ynot && curl -fsSL -o src.zip https://github.com/Omkarynot/ynot-skills/archive/refs/heads/main.zip && rm -rf src && unzip -q src.zip && mv ynot-skills-main src && node src/ynot-artwork/setup.mjs`
    - Windows (PowerShell): `mkdir -Force $HOME\.ynot | Out-Null; cd $HOME\.ynot; curl.exe -fsSL -o src.zip https://github.com/Omkarynot/ynot-skills/archive/refs/heads/main.zip; if (Test-Path src) { Remove-Item -Recurse -Force src }; tar -xf src.zip; Rename-Item ynot-skills-main src; node src\ynot-artwork\setup.mjs`
 
-   It installs the Adobe extension, enables it, and registers the adobe MCP + skill for Claude Desktop and Codex.
+   It installs the Adobe extension, enables it, and registers the adobe MCP for Claude Desktop and Codex. The MCP
+   carries the artwork skill itself (`artwork_guide` tool), so no skill upload is needed anywhere.
    With the plugin installed it leaves Claude Code to the plugin (nothing shows twice). Backups go to `~/.ynot-skills-backup`.
 4. **Python for PPT reading** (optional, needed to read mockup .pptx files): macOS `python3 -m pip install --user python-pptx`,
    Windows `py -m pip install --user python-pptx` (install Python 3 from python.org first if missing, after asking).
 5. **Tell the user** (plain words, as a short list):
    - Quit and reopen Illustrator and Photoshop (macOS: Cmd+Q, not just closing the window).
    - Restart Claude Desktop / Codex / Claude Code if they use them.
-   - Claude Desktop chat window only: upload `~/.ynot/ynot-artwork-spec.zip` in Settings > Capabilities > Skills (one time).
    - macOS: if asked, allow Screen Recording for Claude (System Settings > Privacy & Security), used for screenshots.
    - For Pantone matching, sign in to https://connect.pantone.com in Chrome with the company account.
 6. **Check** after the restart: call the adobe MCP `status` tool. Illustrator should show its version. If it says

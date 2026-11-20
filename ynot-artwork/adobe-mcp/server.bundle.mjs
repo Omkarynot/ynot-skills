@@ -2980,7 +2980,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3007,7 +3007,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3871,7 +3871,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -4262,7 +4262,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -4677,7 +4677,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -19381,7 +19381,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -19398,7 +19398,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -19476,7 +19476,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19738,12 +19738,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20883,7 +20883,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -21547,28 +21547,192 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
 };
 
 // server.mjs
+import { execFile as execFile2 } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
+import { readFileSync as readFileSync2, existsSync as existsSync2, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join as join2 } from "node:path";
+
+// ynot.mjs
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFileSync, existsSync, unlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-var PORTS = { photoshop: 8701, illustrator: 8702, aftereffects: 8703, premiere: 8704, audition: 8705 };
-var run = promisify(execFile);
-var q = (s) => JSON.stringify(String(s));
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+var HERE = dirname(fileURLToPath(import.meta.url));
 var fwd = (p) => p.replace(/\\/g, "/");
-var PRELUDE = readFileSync(new URL("./prelude.jsx", import.meta.url), "utf8");
+var SKILL = [join(HERE, "..", "skills", "ynot-artwork-spec")].map((p) => resolve(p)).find((p) => existsSync(join(p, "SKILL.md")));
+var CACHE = join(homedir(), ".ynot", "pantone_cache.json");
+var home = (p) => resolve(p.replace(/^~(?=$|[\\/])/, homedir()));
+var text = (t) => ({ content: [{ type: "text", text: t }] });
+var fail = (t) => ({ content: [{ type: "text", text: t }], isError: true });
+var INSTRUCTIONS = SKILL && `Y-Not artwork / spec sheets: when the user asks for an artwork, spec sheet, "specs" or PO artwork for a product, or gives a mockup PPT + logos to turn into a production artwork, call artwork_guide first and follow it exactly (skip that call if the ynot-artwork-spec skill is already loaded).`;
+function hexToLab(h) {
+  h = h.replace("#", "");
+  const lin = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const M = [[0.4360747, 0.3850649, 0.1430804], [0.2225045, 0.7168786, 0.0606169], [0.0139322, 0.0971045, 0.7141733]];
+  const [X, Y, Z] = M.map((r) => r[0] * lin[0] + r[1] * lin[1] + r[2] * lin[2]);
+  const f = (t) => t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116;
+  const fx = f(X / 0.96422), fy = f(Y), fz = f(Z / 0.82521);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+function de2000([L1, a1, b1], [L2, a2, b2]) {
+  const rad = Math.PI / 180, deg = 180 / Math.PI, C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cb = (C1 + C2) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7))), a1p = (1 + G) * a1, a2p = (1 + G) * a2;
+  const C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
+  const h1p = (Math.atan2(b1, a1p) * deg % 360 + 360) % 360, h2p = (Math.atan2(b2, a2p) * deg % 360 + 360) % 360;
+  const dLp = L2 - L1, dCp = C2p - C1p;
+  let dh = h2p - h1p;
+  if (C1p * C2p === 0) dh = 0;
+  else if (dh > 180) dh -= 360;
+  else if (dh < -180) dh += 360;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(dh / 2 * rad), Lbp = (L1 + L2) / 2, Cbp = (C1p + C2p) / 2, hs = h1p + h2p;
+  const hbp = C1p * C2p === 0 ? hs : Math.abs(h1p - h2p) <= 180 ? hs / 2 : hs < 360 ? (hs + 360) / 2 : (hs - 360) / 2;
+  const T = 1 - 0.17 * Math.cos((hbp - 30) * rad) + 0.24 * Math.cos(2 * hbp * rad) + 0.32 * Math.cos((3 * hbp + 6) * rad) - 0.2 * Math.cos((4 * hbp - 63) * rad);
+  const SL = 1 + 0.015 * (Lbp - 50) ** 2 / Math.sqrt(20 + (Lbp - 50) ** 2), SC = 1 + 0.045 * Cbp, SH = 1 + 0.015 * Cbp * T;
+  const RT = -2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7)) * Math.sin(60 * Math.exp(-(((hbp - 275) / 25) ** 2)) * rad);
+  return Math.sqrt((dLp / SL) ** 2 + (dCp / SC) ** 2 + (dHp / SH) ** 2 + RT * (dCp / SC) * (dHp / SH));
+}
+var loadCache = () => {
+  try {
+    return JSON.parse(readFileSync(CACHE, "utf8"));
+  } catch {
+    return {};
+  }
+};
+async function python(args) {
+  const cands = process.platform === "win32" ? [["py", ["-3"]], ["python", []], ["python3", []]] : [["python3", []], ["python", []]];
+  for (const [cmd, pre] of cands) {
+    try {
+      await promisify(execFile)(cmd, [...pre, "-c", "import pptx"], { timeout: 2e4 });
+    } catch {
+      continue;
+    }
+    return (await promisify(execFile)(cmd, [...pre, "-I", ...args], { timeout: 12e4, maxBuffer: 2e7 })).stdout;
+  }
+  throw new Error("Python 3 with python-pptx not found. Install Python 3, then: pip install python-pptx (or ask the user to drop the PPT into the chat).");
+}
+function registerYnot(server2) {
+  if (!SKILL) return;
+  server2.tool(
+    "artwork_guide",
+    'Y-Not artwork / spec sheet instructions (the ynot-artwork-spec skill). Call FIRST for any Y-Not artwork, spec sheet or PO artwork request and follow it exactly. part "product-types" returns the per-product reference it tells you to read.',
+    { part: external_exports.enum(["skill", "product-types"]).optional() },
+    async ({ part }) => {
+      if (part === "product-types") return text(readFileSync(join(SKILL, "references", "product-types.md"), "utf8"));
+      const body = readFileSync(join(SKILL, "SKILL.md"), "utf8").replace(/^---[\s\S]*?---\s*/, "").split("<skill>").join(fwd(SKILL));
+      return text(`Skill folder on this computer: ${fwd(SKILL)} (already filled into every path below).
+Without a shell (e.g. the Claude Desktop chat window), use these adobe MCP tools instead of the shell commands in the guide:
+files (list the job folder), view_image (look at mockups/photos), read_pptx (scripts/extract_pptx.py), pantone_score
+(scripts/color.py: \u0394E + cache). Pantone Connect lookups need a browser tool; without one, ask the user to open the
+convert link from the guide and paste the Best Match + Lab values. Save the job folder next to the mockup files.
+
+${body}`);
+    }
+  );
+  server2.tool(
+    "files",
+    'List a folder on this computer, e.g. the job folder with the mockup PPT, logos and photos. "~" is the home folder. depth 1 = also list subfolders.',
+    { folder: external_exports.string(), depth: external_exports.number().int().min(0).max(2).optional() },
+    async ({ folder, depth = 0 }) => {
+      const root = home(folder), lines = [];
+      const walk = (d, lvl) => {
+        for (const n of readdirSync(d).sort()) {
+          if (n.startsWith(".")) continue;
+          const p = join(d, n);
+          let st;
+          try {
+            st = statSync(p);
+          } catch {
+            continue;
+          }
+          lines.push(`${"  ".repeat(lvl)}${n}${st.isDirectory() ? "/" : `  (${Math.round(st.size / 1024)} KB)`}`);
+          if (st.isDirectory() && lvl < depth && lines.length < 500) walk(p, lvl + 1);
+        }
+      };
+      try {
+        walk(root, 0);
+      } catch (e) {
+        return fail(`Can't list ${root}: ${e.message}`);
+      }
+      return text(`${fwd(root)}
+${lines.join("\n") || "(empty)"}`);
+    }
+  );
+  const MIME = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
+  server2.tool(
+    "view_image",
+    "Show an image file from this computer (PNG/JPG/GIF/WEBP): mockups, product photos, images extracted from a PPT. For .ai/.svg/.pdf logos, place them in Illustrator and use preview instead.",
+    { path: external_exports.string() },
+    async ({ path }) => {
+      const p = home(path), mime = MIME[extname(p).toLowerCase()];
+      if (!mime) return fail("Only PNG/JPG/GIF/WEBP. For vectors, place the file in Illustrator and call preview.");
+      let buf;
+      try {
+        buf = readFileSync(p);
+      } catch (e) {
+        return fail(`Can't read ${p}: ${e.message}`);
+      }
+      if (buf.length > 8e6) return fail("Image over 8 MB: place it in Illustrator and use preview with a region instead.");
+      return { content: [{ type: "image", data: buf.toString("base64"), mimeType: mime }, { type: "text", text: fwd(p) }] };
+    }
+  );
+  server2.tool(
+    "read_pptx",
+    "Extract a mockup .pptx on this computer: slide text, tables and notes (returned) and every image (saved to outDir/media, view them with view_image). Needs Python 3 + python-pptx on the computer.",
+    { path: external_exports.string(), outDir: external_exports.string().describe("Job folder, e.g. next to the PPT: <OPP>_work") },
+    async ({ path, outDir }) => {
+      try {
+        mkdirSync(home(outDir), { recursive: true });
+        return text(await python([join(SKILL, "scripts", "extract_pptx.py"), home(path), home(outDir)]));
+      } catch (e) {
+        return fail(e.message);
+      }
+    }
+  );
+  server2.tool(
+    "pantone_score",
+    `Pantone matching helper (scripts/color.py). With hex only: cached Pantone Connect result for that exact hex, or "miss".
+With hex + lab (the Pantone Lab from Pantone Connect): \u0394E00 between them (under 2 fine, 2-3 tell the user, over 3 flag it).
+Add code (e.g. "1795 C") to also save it to the shared cache. Never invent Lab values: they come from Pantone Connect.`,
+    { hex: external_exports.string().regex(/^#?[0-9a-fA-F]{6}$/), lab: external_exports.array(external_exports.number()).length(3).optional(), code: external_exports.string().optional() },
+    async ({ hex, lab, code }) => {
+      const H = hex.replace("#", "").toUpperCase(), mine = hexToLab(H).map((v) => Math.round(v * 100) / 100);
+      if (!lab) {
+        const hit = loadCache()[H];
+        return text(hit ? JSON.stringify(hit) : `miss (logo Lab D50: ${mine.join(", ")})`);
+      }
+      const dE = Math.round(de2000(hexToLab(H), lab) * 100) / 100;
+      if (code) {
+        const c = loadCache();
+        c[H] = { code, lab, dE00: dE };
+        mkdirSync(dirname(CACHE), { recursive: true });
+        writeFileSync(CACHE, JSON.stringify(c, null, 0));
+      }
+      return text(JSON.stringify({ hex: "#" + H, logoLab: mine, pantoneLab: lab, dE00: dE, saved: !!code }));
+    }
+  );
+}
+
+// server.mjs
+var PORTS = { photoshop: 8701, illustrator: 8702, aftereffects: 8703, premiere: 8704, audition: 8705 };
+var run = promisify2(execFile2);
+var q = (s) => JSON.stringify(String(s));
+var fwd2 = (p) => p.replace(/\\/g, "/");
+var PRELUDE = readFileSync2(new URL("./prelude.jsx", import.meta.url), "utf8");
 async function bridge(app, body, ms) {
   const r = await fetch(`http://127.0.0.1:${PORTS[app]}`, {
     method: "POST",
@@ -21579,16 +21743,17 @@ async function bridge(app, body, ms) {
   return (await r.text()).trim();
 }
 function wrap(code, { include = [], rollbackOnError = false } = {}) {
-  const inc = include.map((p) => `$.evalFile(${q(fwd(p))});`).join("\n");
+  const inc = include.map((p) => `$.evalFile(${q(fwd2(p))});`).join("\n");
   return `${PRELUDE}
 var __mcpD = ${rollbackOnError ? "__mcpDocs()" : "null"}, __mcpR;
 try { ${inc}
 __mcpR = __mcpOut(eval(${q(code)})); } catch (__e) { __mcpRollback(__mcpD); __mcpR = __mcpErr(__e, ${q(code)}); }
 __mcpRestore(); __mcpR;`;
 }
-var server = new McpServer({ name: "adobe", version: "1.2.0" });
+var server = new McpServer({ name: "adobe", version: "1.3.0" }, INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {});
+registerYnot(server);
 var unreachable = (app) => `${app} isn't reachable. Open it (the MCP Bridge extension starts with the app), or call the status tool.`;
-var fail = (text) => ({ content: [{ type: "text", text }], isError: true });
+var fail2 = (text2) => ({ content: [{ type: "text", text: text2 }], isError: true });
 server.tool(
   "run_jsx",
   `Run ExtendScript (ES3: no let/const/arrow functions) inside a running Adobe app and return the value of the last expression.
@@ -21606,20 +21771,20 @@ Check visual results with the preview tool (sharp render of the document), not s
     rollbackOnError: external_exports.boolean().optional()
   },
   async ({ app, code, file, include, rollbackOnError }) => {
-    if (!code && !file) return fail("Pass code or file.");
+    if (!code && !file) return fail2("Pass code or file.");
     let src = code;
     if (file) {
       try {
-        src = readFileSync(file, "utf8");
+        src = readFileSync2(file, "utf8");
       } catch (e) {
-        return fail(`Can't read ${file}: ${e.message}`);
+        return fail2(`Can't read ${file}: ${e.message}`);
       }
     }
     try {
-      const text = await bridge(app, wrap(src, { include, rollbackOnError }));
-      return { content: [{ type: "text", text }], isError: text.startsWith("ERROR:") || text === "EvalScript error." };
+      const text2 = await bridge(app, wrap(src, { include, rollbackOnError }));
+      return { content: [{ type: "text", text: text2 }], isError: text2.startsWith("ERROR:") || text2 === "EvalScript error." };
     } catch {
-      return fail(unreachable(app));
+      return fail2(unreachable(app));
     }
   }
 );
@@ -21670,15 +21835,15 @@ Pass document (its name) whenever the user may be working in the same app, so th
     document: external_exports.string().optional().describe("Document name; default is the active document")
   },
   async ({ app, ...opts }) => {
-    const out = join(tmpdir(), `adobe-mcp-preview-${Date.now()}.png`);
+    const out = join2(tmpdir(), `adobe-mcp-preview-${Date.now()}.png`);
     let info;
     try {
-      info = await bridge(app, wrap(previewJsx(app, fwd(out), opts)));
+      info = await bridge(app, wrap(previewJsx(app, fwd2(out), opts)));
     } catch {
-      return fail(unreachable(app));
+      return fail2(unreachable(app));
     }
-    if (info.startsWith("ERROR:") || !existsSync(out)) return fail(info || "Export failed.");
-    const data = readFileSync(out).toString("base64");
+    if (info.startsWith("ERROR:") || !existsSync2(out)) return fail2(info || "Export failed.");
+    const data = readFileSync2(out).toString("base64");
     unlinkSync(out);
     return { content: [{ type: "image", data, mimeType: "image/png" }, { type: "text", text: info }] };
   }
@@ -21697,10 +21862,10 @@ $out.Save($ms, [Drawing.Imaging.ImageFormat]::Jpeg)
 [Convert]::ToBase64String($ms.ToArray())`;
 async function screenshot() {
   if (process.platform === "win32") return (await run("powershell", ["-NoProfile", "-Command", SHOT_PS], { maxBuffer: 5e7 })).stdout.trim();
-  const f = join(tmpdir(), `adobe-mcp-shot-${Date.now()}.jpg`);
+  const f = join2(tmpdir(), `adobe-mcp-shot-${Date.now()}.jpg`);
   await run("screencapture", ["-x", "-t", "jpg", f]);
   await run("sips", ["-Z", "2000", f]);
-  const data = readFileSync(f).toString("base64");
+  const data = readFileSync2(f).toString("base64");
   unlinkSync(f);
   return data;
 }
@@ -21712,7 +21877,7 @@ server.tool(
     try {
       return { content: [{ type: "image", data: await screenshot(), mimeType: "image/jpeg" }] };
     } catch (e) {
-      return fail("Screenshot failed: " + e.message + (process.platform === "darwin" ? " (allow Screen Recording for Claude/terminal in System Settings > Privacy & Security)" : ""));
+      return fail2("Screenshot failed: " + e.message + (process.platform === "darwin" ? " (allow Screen Recording for Claude/terminal in System Settings > Privacy & Security)" : ""));
     }
   }
 );
