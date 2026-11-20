@@ -7,7 +7,7 @@
 //            gradients:[{name, stops:[code...], at:[0..100...]}], notes:[{text, color:'red'|'black'}]}]}
 //   image   {title, file, caption, height}
 //   specs   {panels:[{title, lines:[[key, value]...]}]}
-//   dieline {title, box:'tuck'|'mailer', dims:[a,b,c], opts, art:{Panel: file}, note}
+//   dieline {title, box:'tuck'|'mailer', dims:[a,b,c], opts, art:{Panel: file | {file, w}}, note}  (w = art width, else fit the panel)
 //   notes   {lines:[{text, color}]}
 // ponytail: one generic stacker; per product type only the section list in spec.json changes.
 
@@ -21,7 +21,7 @@ function _paraAuto(layer, str, x, y, w, size, color) {
   return y + (n * lh + 4) / 72;
 }
 
-function _colours(c) { return c === 'red' ? YN_C.red : c === 'cyan' ? YN_C.cyan : YN_C.black; }
+function _colours(c) { return { red: YN_C.red, cyan: YN_C.cyan }[c] || YN_C.black; } // no chained ?: in ExtendScript
 function _r2(v) { return Math.round(v * 100) / 100; }
 
 function ynBuildSheet(S, job) {
@@ -68,7 +68,9 @@ function ynBuildSheet(S, job) {
         }
         for (k = 0; v.callouts && k < v.callouts.length; k++) {
           var o = v.callouts[k], right = o.side ? o.side === 'R' : o.x >= 0.5;
-          ynCallout(X(o.x), Y(o.y), right ? p.x + z.w + 0.3 : p.x - 0.3, Y(o.ly === undefined ? o.y : o.ly), o.text);
+          var tw = o.text.length * 0.065; // ~8.4 pt Arial: keep the label inside its column
+          var lx = right ? Math.min(p.x + z.w + 0.3, cx + cw - tw - 0.15) : Math.max(p.x - 0.3, cx + tw + 0.15);
+          ynCallout(X(o.x), Y(o.y), lx, Y(o.ly === undefined ? o.y : o.ly), o.text);
         }
       }
       if (s.color) {
@@ -86,11 +88,12 @@ function ynBuildSheet(S, job) {
         titles.push(P.title); subs.push(P.sub);
         for (var k = 0; P.logos && k < P.logos.length; k++) {
           var L = P.logos[k], it = ynPlace('Logo Artwork', abs(L.file), lx, yy, L.w, 20);
-          ynScaleToWidth(it, L.w);
+          ynScaleToWidth(it, L.w); _moveTo(it, _X(lx), _Y(yy)); // top-left at the cursor, not centred in the fit box
           var z = ynSize(it), p = ynPos(it), zw = _r2(z.w), zh = _r2(z.h);
-          ynDim(p.x, p.y - 0.22, z.w, 'H', zw); ynDim(p.x - 0.15, p.y, z.h, 'V', zh);
+          // width dim above the first logo, below the others (above would collide with the logo before it)
+          ynDim(p.x, k ? p.y + z.h + 0.12 : p.y - 0.22, z.w, 'H', zw); ynDim(p.x - 0.15, p.y, z.h, 'V', zh);
           sizes.push((L.name ? L.name + ' ' : '') + ynIn(zw) + ' x ' + ynIn(zh)); log.push((L.name || L.file) + ' ' + zw + 'x' + zh);
-          yy = p.y + z.h + (L.gapAfter !== undefined ? L.gapAfter : 0.45);
+          yy = p.y + z.h + (k ? 0.35 : 0) + (L.gapAfter !== undefined ? L.gapAfter : 0.45);
         }
         var chx = cx + Math.max(2.4, cw * 0.48), chy = top + (P.sub ? 0.75 : 0.55) + 0.1;
         if (P.chips && P.chips.length) {
@@ -143,7 +146,8 @@ function ynBuildSheet(S, job) {
     dieline: function (s, top) {
       var d = s.dims, bx = M + 0.6, by = top + 0.7;
       var box = s.box === 'mailer' ? ynMailer(bx, by, d[0], d[1], d[2], s.opts) : ynTuckEnd(bx, by, d[0], d[1], d[2], s.opts);
-      for (var k in s.art) if (s.art.hasOwnProperty(k) && box.panels[k]) ynPanelArt(box.panels[k], abs(s.art[k]));
+      var art = s.art || {}; // ES3: for-in over undefined throws
+      for (var k in art) if (art.hasOwnProperty(k) && box.panels[k]) { var A = typeof art[k] === 'string' ? { file: art[k] } : art[k]; ynPanelArt(box.panels[k], abs(A.file), A.pad, A.w); }
       ynDielineDims(box);
       ynDielineLegend(M + IW - 2.6, top + 0.45);
       var yy = box.y + box.h + 0.75;

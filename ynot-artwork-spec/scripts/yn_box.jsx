@@ -30,8 +30,20 @@ function _dlDraw(t) {
   cut.name = 'Die-cut';
   // Bleed: the cut outline pushed out by YN_DL.bleedIn (mitred corners). Computed, not the Offset Path effect,
   // because live effects can open a dialog and block the script.
-  var b = YN_DL.bleedIn, P = t.pts, n = P.length, N = [], out = [];
-  for (var k = 0; k < n; k++) {
+  // Slits between neighbouring flaps (edge goes down to the hinge and straight back up) are bridged first,
+  // otherwise the offset folds over itself there.
+  var b = YN_DL.bleedIn, P = t.pts.slice(), N = [], out = [], k, changed = true;
+  while (changed) {
+    changed = false;
+    for (k = 0; k < P.length && P.length > 3; k++) {
+      var A = P[(k + P.length - 1) % P.length], C = P[k], D2 = P[(k + 1) % P.length];
+      var ix = C[0] - A[0], iy = C[1] - A[1], ox = D2[0] - C[0], oy = D2[1] - C[1];
+      var li = Math.sqrt(ix * ix + iy * iy) || 1, lo = Math.sqrt(ox * ox + oy * oy) || 1;
+      if ((ix * ox + iy * oy) / (li * lo) < -0.9) { P.splice(k, 1); changed = true; break; }
+    }
+  }
+  var n = P.length;
+  for (k = 0; k < n; k++) {
     var q = P[(k + 1) % n], dx = q[0] - P[k][0], dy = q[1] - P[k][1], len = Math.sqrt(dx * dx + dy * dy) || 1;
     N.push([dy / len, -dx / len]);
   }
@@ -119,7 +131,7 @@ function ynMailer(x, y, L, W, H, opts) {
 function ynDielineDims(box) {
   var x = box.x, yb = box.y + box.h + 0.3;
   for (var i = 0; i < box.widths.length; i++) { ynDim(x, yb, box.widths[i], 'H', box.widths[i]); x += box.widths[i]; }
-  ynDim(box.x + box.w + 0.35, box.bodyY, box.bodyH, 'V', box.bodyH);
+  ynDim(box.x + box.w + 1.0, box.bodyY, box.bodyH, 'V', box.bodyH); // label sits left of the line, clear of the bleed
 }
 
 // Legend: three swatches + labels, top-left at x,y.
@@ -132,10 +144,12 @@ function ynDielineLegend(x, y) {
   }
 }
 
-// Place art in a box panel, fitted inside it (pad inches), rotated when the panel folds over (lid/back).
-function ynPanelArt(panel, path, pad) {
+// Place art centred in a box panel: at width w (inches) if given, else fitted inside it (pad inches).
+// Rotated when the panel folds over (lid/back) so it reads correctly once folded.
+function ynPanelArt(panel, path, pad, w) {
   pad = pad === undefined ? 0.15 : pad;
   var it = ynPlace('Artwork', path, panel.x + pad, panel.y + pad, panel.w - 2 * pad, panel.h - 2 * pad);
+  if (w) { ynScaleToWidth(it, w); var z = ynSize(it); _moveTo(it, _X(panel.x + (panel.w - z.w) / 2), _Y(panel.y + (panel.h - z.h) / 2)); }
   if (panel.rotate) it.rotate(panel.rotate);
   return it;
 }

@@ -79,8 +79,9 @@ server.tool('status', 'List which Adobe apps have the MCP Bridge running, their 
 
 // Illustrator: export the active (or given) artboard, or a region of it in inches from its top-left.
 // Photoshop: merged copy, region in pixels. Long side defaults to ~2000 px.
-export const previewJsx = (app, out, { scale, region, artboard } = {}) => app === 'illustrator' ? `
-var d = app.activeDocument, ab = d.artboards, prev = ab.getActiveArtboardIndex();
+const docJsx = name => (name ? `app.documents.getByName(${q(name)})` : 'app.activeDocument');
+export const previewJsx = (app, out, { scale, region, artboard, document } = {}) => app === 'illustrator' ? `
+var d = ${docJsx(document)}, ab = d.artboards, prev = ab.getActiveArtboardIndex();
 var idx = ${artboard ?? 'prev'}, r = ab[idx].artboardRect, tmp = null, R = ${JSON.stringify(region ?? null)};
 if (R) { r = [r[0] + R.x * 72, r[1] - R.y * 72, r[0] + (R.x + R.w) * 72, r[1] - (R.y + R.h) * 72]; tmp = ab.add(r); idx = ab.length - 1; }
 ab.setActiveArtboardIndex(idx);
@@ -90,7 +91,7 @@ o.horizontalScale = o.verticalScale = s;
 d.exportFile(new File(${q(out)}), ExportType.PNG24, o);
 ab.setActiveArtboardIndex(prev); if (tmp) tmp.remove();
 'scale ' + Math.round(s) + '%, area ' + Math.round((r[2] - r[0]) / 72 * 100) / 100 + ' x ' + Math.round((r[1] - r[3]) / 72 * 100) / 100 + ' in'` : `
-var d = app.activeDocument.duplicate('mcp_preview', true), R = ${JSON.stringify(region ?? null)};
+var d = ${docJsx(document)}.duplicate('mcp_preview', true), R = ${JSON.stringify(region ?? null)};
 if (R) d.crop([UnitValue(R.x, 'px'), UnitValue(R.y, 'px'), UnitValue(R.x + R.w, 'px'), UnitValue(R.y + R.h, 'px')]);
 var w = d.width.as('px'), h = d.height.as('px'), k = ${scale ? scale / 100 : 0} || Math.min(1, 2000 / Math.max(w, h));
 if (k !== 1) d.resizeImage(UnitValue(w * k, 'px'), UnitValue(h * k, 'px'), null, ResampleMethod.BICUBIC);
@@ -101,12 +102,14 @@ server.tool(
   'preview',
   `Render the active Illustrator or Photoshop document to a PNG and return it: a sharp image of the artwork itself, for checking layout and details.
 Illustrator: region {x,y,w,h} in INCHES from the artboard's top-left zooms into part of the sheet; artboard picks an artboard index.
-Photoshop: region in PIXELS. scale is a percentage (default: long side about 2000 px).`,
+Photoshop: region in PIXELS. scale is a percentage (default: long side about 2000 px).
+Pass document (its name) whenever the user may be working in the same app, so their active document is never the one used.`,
   {
     app: z.enum(['illustrator', 'photoshop']),
     region: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
     artboard: z.number().int().optional(),
     scale: z.number().optional(),
+    document: z.string().optional().describe('Document name; default is the active document'),
   },
   async ({ app, ...opts }) => {
     const out = join(tmpdir(), `adobe-mcp-preview-${Date.now()}.png`);

@@ -28,9 +28,14 @@ Save the final .ai/.pdf where the user says.
   tell the user to install the adobe-mcp from the ynot-skills repo (see its README) and restart Claude.
 - Chrome is signed in to connect.pantone.com (needed for Pantone matching).
 
+**Self-test** (after changing any script): `run_jsx({app:"illustrator", file:"<skill>/test/selftest.jsx", include:["<skill>/scripts/yn_lib.jsx"], rollbackOnError:true})` must return `ok`.
+
 **Running scripts:** always `run_jsx({app: "illustrator", file: "<job>/build.jsx", include: ["<skill>/scripts/yn_lib.jsx"],
 rollbackOnError: true})`. Scripts can return objects (they come back as JSON) and can use `JSON.parse`/`JSON.stringify`.
 Errors name the file and line. Check every result visually with the `preview` tool (add `region` in inches to zoom).
+**The user may be working in Illustrator at the same time.** Never rely on the active document: return `YN.doc.name`
+from the build and pass it as `document` to `preview` and as `doc` to `ynQC`. Keep each script short where you can:
+Illustrator is frozen for the user while a script runs. If `status` says busy, a dialog the user has open may be blocking it; ask.
 
 ## Workflow (do not skip or reorder)
 
@@ -82,7 +87,8 @@ at every image. Also read any extra files the user gave (PDF, xlsx BOM, emails p
 ### 4. Fill the intake table + derive
 Map what you found onto the fields below. Each field gets a value and a source:
 `PPT slide N`, `logo file`, `user`, `derived`, or `MISSING`. Derive before asking:
-- **Logo colours / count**: place the logo and call `ynLogoColors(item)`: every fill/stroke/gradient stop as hex, largest
+- **Logo colours / count**: SVG logos: `ynSvgColors(path)` gives the exact hex values written in the file, plus a count of
+  embedded images (raster parts can't be matched; say so). Other formats: place the logo and call `ynLogoColors(item)`: every fill/stroke/gradient stop as hex, largest
   area first, with existing spot names and a count of raster parts (raster parts can't be matched; say so). Ignore
   colours with a tiny area (anti-alias slivers) after checking them in a zoomed `preview`.
 - **Pantone matching**: Claude does all of it (tested 2026-11-17). The Pantone Connect plugin is only a webview of
@@ -400,6 +406,7 @@ Close only documents you created. Never close the user's documents.
   (`"Arial-BoldMT"` for bold), size, fillColor. Set tracking 0 explicitly.
 - Arrows: a 2-point `pathItems` line + small filled triangle; group them.
 - Preview: the `preview` tool (or `ynExportPNG(path, scale)` to keep a PNG in the job folder).
+- Never chain `a ? b : c ? d : e`: ExtendScript groups it wrongly. Use an object lookup or if/else.
 - ES3 reserved words can't be names: `short`, `int`, `char`, `byte`, `float`, `long`, `double`, `final`, `native`, `package`, `goto`.
 - `$.evalFile` inside a function makes the loaded file's functions local to that function: load at top level.
 - Save: `doc.saveAs(new File(ai), new IllustratorSaveOptions())`, PDF with `PDFSaveOptions`

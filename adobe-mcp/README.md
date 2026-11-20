@@ -19,4 +19,8 @@ With Photoshop or Illustrator open (a document open in it for the preview check)
 node test/selftest.mjs photoshop      # or illustrator
 node test/call.mjs status             # call any tool by hand
 ```
+Skill check (Illustrator open): `node test/call.mjs run_jsx` with `file` = `ynot-artwork-spec/test/selftest.jsx` and
+`include` = `ynot-artwork-spec/scripts/yn_lib.jsx`; it must print `ok`.
+```
+```
 After changing `extension/`, restart the Adobe app. After changing `server.mjs`/`prelude.jsx`, restart Claude.

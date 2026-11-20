@@ -50,7 +50,8 @@ function ynText(layer, str, x, y, size, bold, color, align) {
   var a = tf.textRange.characterAttributes;
   a.textFont = bold ? YN.fontB : YN.fontR; a.size = size; a.tracking = 0;
   a.fillColor = color || YN_C.black;
-  var j = align === 'C' ? Justification.CENTER : align === 'R' ? Justification.RIGHT : Justification.LEFT;
+  // lookup, not a chained ?: (ExtendScript groups a ? b : c ? d : e wrongly)
+  var j = { C: Justification.CENTER, R: Justification.RIGHT }[align] || Justification.LEFT;
   for (var i = 0; i < tf.paragraphs.length; i++) tf.paragraphs[i].justification = j;
   tf.position = [_X(x), _Y(y)];
   var w = tf.width;
@@ -277,8 +278,9 @@ function ynSave(aiPath, pdfPath) {
 // ---------- QC: checks the active document; returns {ok, issues:[...]} ----------
 // Catches the team's usual slips: non-Arial fonts, inch/cm that disagree, chips without a matching spot (or the
 // reverse), placeholder text, overset text, items off the artboard, missing links, wrong file name.
+// o.doc = document name (use it: the user may have another document active).
 function ynQC(o) {
-  o = o || {}; var d = app.activeDocument, out = [], i, k, m, chips = {}, groups = [];
+  o = o || {}; var d = o.doc ? app.documents.getByName(o.doc) : app.activeDocument, out = [], i, k, m, chips = {}, groups = [];
   function add(t, msg) { out.push(t + ': ' + msg); }
   function _sh(s) { s = s.replace(/[\r\n]+/g, ' '); return s.length > 50 ? s.slice(0, 50) + '...' : s; }
   for (i = 0; i < d.textFrames.length; i++) {
@@ -313,18 +315,33 @@ function ynQC(o) {
   var ab = d.artboards[0].artboardRect;
   for (i = 1; i < d.artboards.length; i++) { var r = d.artboards[i].artboardRect; ab = [Math.min(ab[0], r[0]), Math.max(ab[1], r[1]), Math.max(ab[2], r[2]), Math.min(ab[3], r[3])]; }
   for (i = 0; i < d.layers.length; i++) for (k = 0; k < d.layers[i].pageItems.length; k++) {
-    var it = d.layers[i].pageItems[k], b = it.visibleBounds;
+    var it = d.layers[i].pageItems[k], b = _vb(it); // clip-aware: hidden content outside a logo's clip doesn't count
     if (b[0] < ab[0] - 2 || b[2] > ab[2] + 2 || b[1] > ab[1] + 2 || b[3] < ab[3] - 2) add('off artboard', d.layers[i].name + ' / ' + it.typename + (it.name ? ' ' + it.name : ''));
   }
   for (i = 0; i < d.placedItems.length; i++) { try { if (!d.placedItems[i].file.exists) throw 0; } catch (e) { add('missing link', 'placed item ' + i); } }
-  var saved = true; try { d.fullName; } catch (e) { saved = false; }
-  if (saved && d.path && !/^\d{4,6}-[A-Z0-9]{2,8}-[A-Z0-9-]+-SPEC-101-\d{8}\.(ai|pdf)$/.test(d.name)) add('file name', d.name + ' (want OPP-CLIENT-PROJECT-SPEC-101-YYYYMMDD)');
+  var saved = /\.(ai|pdf)$/i.test(d.name); // unsaved docs are "Untitled-N": checked again after saving
+  if (saved && !/^\d{4,6}-[A-Z0-9]{2,8}-[A-Z0-9-]+-SPEC-101-\d{8}\.(ai|pdf)$/.test(d.name)) add('file name', d.name + ' (want OPP-CLIENT-PROJECT-SPEC-101-YYYYMMDD)');
   if (o.opp) { var found = false; for (i = 0; i < d.textFrames.length && !found; i++) found = d.textFrames[i].contents.indexOf(String(o.opp)) === 0; if (!found) add('title', 'no text starts with OPP ' + o.opp); }
   return { ok: !out.length, issues: out, counted: { texts: d.textFrames.length, chips: _keys(chips).length, spots: _keys(spots).length } };
 }
 function _keys(o) { var a = []; for (var k in o) if (o.hasOwnProperty(k)) a.push(k); return a; }
 
-// ---------- Logo colours: fills/strokes/gradient stops of a placed logo, largest area first ----------
+// ---------- Logo colours ----------
+// SVG: exact hex values written in the file (fill/stroke/stop-color, attributes and style), most used first.
+// Use this for SVG logos: placing an SVG into the CMYK sheet converts its colours.
+function ynSvgColors(path) {
+  var src = ynRead(path), hits = src.match(/(fill|stroke|stop-color)\s*[:=]\s*["']?\s*#[0-9a-fA-F]{3,6}/g) || [], n = {}, list = [], i, h, k;
+  for (i = 0; i < hits.length; i++) {
+    h = hits[i].replace(/^[^#]*#/, '').toUpperCase();
+    if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+    if (h.length === 6) n[h] = (n[h] || 0) + 1;
+  }
+  for (k in n) if (n.hasOwnProperty(k)) list.push({ hex: '#' + k, uses: n[k] });
+  list.sort(function (a, b) { return b.uses - a.uses; });
+  return { colors: list, embeddedImages: (src.match(/<image/g) || []).length };
+}
+
+// Placed logo (AI/EPS/PDF/SVG): fills/strokes/gradient stops, largest area first.
 // Returns [{hex, model, area (sq in), spot?}]; also raster count (raster parts can't be matched by fill).
 function ynLogoColors(item) {
   var acc = {}, rasters = 0;
@@ -333,7 +350,10 @@ function ynLogoColors(item) {
     var key, model = c.typename, spot = null, h;
     if (model === 'SpotColor') { spot = c.spot.name; c = c.spot.color; model = c.typename; }
     if (model === 'RGBColor') h = hex2(c.red) + hex2(c.green) + hex2(c.blue);
-    else if (model === 'CMYKColor') { var K = 1 - c.black / 100; h = hex2(255 * (1 - c.cyan / 100) * K) + hex2(255 * (1 - c.magenta / 100) * K) + hex2(255 * (1 - c.yellow / 100) * K); }
+    else if (model === 'CMYKColor') { // colour-managed, like the Color panel (naive maths is far off for blues)
+      var v = app.convertSampleColor(ImageColorSpace.CMYK, [c.cyan, c.magenta, c.yellow, c.black], ImageColorSpace.RGB, ColorConvertPurpose.defaultpurpose);
+      h = hex2(v[0]) + hex2(v[1]) + hex2(v[2]);
+    }
     else if (model === 'GrayColor') h = hex2(255 * (1 - c.gray / 100)) + hex2(255 * (1 - c.gray / 100)) + hex2(255 * (1 - c.gray / 100));
     else if (model === 'GradientColor') { for (var s = 0; s < c.gradient.gradientStops.length; s++) rec(c.gradient.gradientStops[s].color, area / c.gradient.gradientStops.length); return; }
     else return;
