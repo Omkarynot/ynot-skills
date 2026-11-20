@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// Y-Not artwork plugin setup, Windows + macOS. Run once per PC (and after plugin updates):  node setup.mjs
+// Y-Not artwork plugin setup, Windows + macOS.  node setup.mjs
+// The plugin's SessionStart hook runs it with --auto, so installing the plugin is all a user has to do.
 //   - Adobe: copies the MCP Bridge extension into the CEP extensions folder, enables unsigned CEP extensions.
 //   - Claude Desktop + Codex: copies the adobe MCP to ~/.ynot/adobe-mcp and registers it; copies the skill to
 //     ~/.codex/skills; writes ~/.ynot/ynot-artwork-spec.zip to upload in the Claude Desktop chat app.
-//   - Claude Code: inside the installed plugin nothing is needed (the plugin brings the skill + MCP); run from a
-//     plain clone of the repo it registers the MCP and copies the skill like for Codex.
+//   - Claude Code: when the plugin is installed it brings the skill + MCP itself (older copies are removed so nothing
+//     shows twice); run from a plain download of the repo it registers the MCP and copies the skill instead.
 // Replaced folders/configs are backed up to ~/.ynot-skills-backup first.
-//   --check   print one line only when setup is missing or older than this plugin (used by the SessionStart hook)
+//   --auto    nothing when up to date; else the whole setup, quietly, then one line for Claude to relay to the user
+//   --check   print one line only when setup is missing or older than this plugin
 //   --no-debug-mode   skip the PlayerDebugMode step
 import { execFileSync, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,27 +22,36 @@ const MCP = join(ROOT, 'adobe-mcp'), SKILL = join(ROOT, 'skills', 'ynot-artwork-
 const YNOT = join(HOME, '.ynot'), STAMP = join(YNOT, 'installed.json'), BAK = join(HOME, '.ynot-skills-backup');
 const CEP = WIN ? join(process.env.APPDATA, 'Adobe', 'CEP', 'extensions') : join(HOME, 'Library', 'Application Support', 'Adobe', 'CEP', 'extensions');
 const EXT_AT = join(CEP, 'com.adobemcp.bridge');
+const DESK = WIN ? join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json') : join(HOME, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+const CODEX = join(HOME, '.codex'), ZIP = join(YNOT, 'ynot-artwork-spec.zip');
 const fwd = p => p.replace(/\\/g, '/'), NODE = fwd(process.execPath), RUNTIME = fwd(join(YNOT, 'adobe-mcp', 'server.bundle.mjs'));
-// Plugin mode when run from the installed plugin, or when the plugin is installed at all: Claude Code then gets the
-// skill + MCP from the plugin, and copies would show up twice.
+const AUTO = process.argv.includes('--auto'), out = [];
+const log = m => (AUTO ? out.push(m) : console.log(m)), say = m => log('  ' + m);
+if (AUTO) process.on('uncaughtException', e => { // never break the user's session: report and stop
+  console.log(`Y-Not artwork plugin: automatic setup failed (${String(e.message).split('\n')[0]}). Tell the user in plain words, and offer to run the ynot-setup skill.`);
+  process.exit(0);
+});
+
+// Plugin mode when run from the installed plugin, or when the plugin is installed at all.
 let pluginInstalled = false;
 try { pluginInstalled = /"ynot-artwork@/.test(readFileSync(join(HOME, '.claude', 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
 const AS_PLUGIN = /[\\/]\.claude[\\/]plugins[\\/]/.test(ROOT) || pluginInstalled;
-const say = m => console.log('  ' + m);
 
 // Version of what this script installs = hash of those files.
 function hashInto(h, p) {
   if (statSync(p).isDirectory()) for (const f of readdirSync(p).sort()) hashInto(h, join(p, f));
-  else h.update(p.slice(ROOT.length)).update(readFileSync(p));
+  else h.update(fwd(p.slice(ROOT.length))).update(readFileSync(p));
 }
 const h = createHash('sha1');
 for (const p of [join(MCP, 'extension'), join(MCP, 'server.bundle.mjs'), join(MCP, 'prelude.jsx'), SKILL]) hashInto(h, p);
 const VERSION = h.digest('hex').slice(0, 12);
+let prev = null; try { prev = JSON.parse(readFileSync(STAMP, 'utf8')); } catch {}
+const upToDate = !!prev && prev.version === VERSION && existsSync(EXT_AT);
 
+if (AUTO && upToDate) process.exit(0);
 if (process.argv.includes('--check')) {
-  let st = null; try { st = JSON.parse(readFileSync(STAMP, 'utf8')); } catch {}
-  if (!st || !existsSync(EXT_AT)) console.log('Y-Not artwork plugin: the Adobe MCP Bridge is not set up on this PC yet. Run the ynot-setup skill, then restart Illustrator/Photoshop.');
-  else if (st.version !== VERSION) console.log('Y-Not artwork plugin was updated: run the ynot-setup skill again, then restart Illustrator/Photoshop.');
+  if (!prev || !existsSync(EXT_AT)) console.log('Y-Not artwork plugin: the Adobe MCP Bridge is not set up on this PC yet. Run the ynot-setup skill, then restart Illustrator/Photoshop.');
+  else if (!upToDate) console.log('Y-Not artwork plugin was updated: run the ynot-setup skill again, then restart Illustrator/Photoshop.');
   process.exit(0);
 }
 
@@ -57,12 +68,11 @@ function place(src, dst, ours) {
   cpSync(src, dst, { recursive: true });
   say(`copied  ${dst}`);
 }
-// .cmd tools (npm, claude) need a shell on Windows; pass one quoted command line.
+// .cmd tools (claude) need a shell on Windows; pass one quoted command line.
 const q = a => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
 const run = (cmd, args) => execSync([cmd, ...args].map(q).join(' '), { stdio: 'pipe', encoding: 'utf8' });
-let prev = null; try { prev = JSON.parse(readFileSync(STAMP, 'utf8')); } catch {}
 
-console.log('Adobe');
+log('Adobe');
 place(join(MCP, 'extension'), EXT_AT, !!prev);
 if (process.argv.includes('--no-debug-mode')) say('PlayerDebugMode: skipped');
 else {
@@ -70,46 +80,47 @@ else {
     if (WIN) execFileSync('reg', ['add', `HKCU\\Software\\Adobe\\CSXS.${v}`, '/v', 'PlayerDebugMode', '/t', 'REG_SZ', '/d', '1', '/f'], { stdio: 'pipe' });
     else execFileSync('defaults', ['write', `com.adobe.CSXS.${v}`, 'PlayerDebugMode', '1']);
   }
+  // macOS caches preferences: restart the user's prefs daemon so Adobe sees the change without a logout
+  if (!WIN) try { execFileSync('killall', ['-u', process.env.USER || '', 'cfprefsd'], { stdio: 'pipe' }); } catch {}
   say('PlayerDebugMode=1 (CSXS 9-13)');
 }
 
-console.log('adobe MCP runtime');
+log('adobe MCP runtime');
 mkdirSync(join(YNOT, 'adobe-mcp'), { recursive: true });
 for (const f of ['server.bundle.mjs', 'prelude.jsx']) cpSync(join(MCP, f), join(YNOT, 'adobe-mcp', f));
 say(`copied  ${join(YNOT, 'adobe-mcp')}`);
 
-console.log('Claude Desktop');
-const desk = WIN ? join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json') : join(HOME, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
-if (existsSync(dirname(desk))) {
-  backupCopy(desk);
-  const cfg = existsSync(desk) ? JSON.parse(readFileSync(desk, 'utf8')) : {};
+log('Claude Desktop');
+const hasDesk = existsSync(dirname(DESK));
+if (hasDesk) {
+  backupCopy(DESK);
+  const cfg = existsSync(DESK) ? JSON.parse(readFileSync(DESK, 'utf8')) : {};
   cfg.mcpServers = { ...cfg.mcpServers, adobe: { command: NODE, args: [RUNTIME] } };
-  writeFileSync(desk, JSON.stringify(cfg, null, 2)); say('adobe MCP registered');
+  writeFileSync(DESK, JSON.stringify(cfg, null, 2)); say('adobe MCP registered');
 } else say('not installed: skipped');
-const zip = join(YNOT, 'ynot-artwork-spec.zip');
 try {
-  rmSync(zip, { force: true });
+  rmSync(ZIP, { force: true });
   // Windows 10+ tar writes a standard zip with "/" paths (PowerShell 5's Compress-Archive writes "\", which breaks elsewhere)
-  if (WIN) execFileSync(join(process.env.SystemRoot || 'C:/Windows', 'System32', 'tar.exe'), ['-a', '-cf', zip, basename(SKILL)], { cwd: dirname(SKILL), stdio: 'pipe' });
-  else execFileSync('zip', ['-qr', zip, basename(SKILL)], { cwd: dirname(SKILL) });
-  say(`skill zip for the chat app: ${zip} (upload it in Settings > Capabilities > Skills)`);
+  if (WIN) execFileSync(join(process.env.SystemRoot || 'C:/Windows', 'System32', 'tar.exe'), ['-a', '-cf', ZIP, basename(SKILL)], { cwd: dirname(SKILL), stdio: 'pipe' });
+  else execFileSync('zip', ['-qr', ZIP, basename(SKILL)], { cwd: dirname(SKILL) });
+  say(`skill zip for the chat app: ${ZIP} (upload it in Settings > Capabilities > Skills)`);
 } catch (e) { say('skill zip failed: ' + e.message.split('\n')[0]); }
 
-console.log('Codex');
-const codexDir = join(HOME, '.codex');
-if (existsSync(codexDir)) {
-  const toml = join(codexDir, 'config.toml'); backupCopy(toml);
+log('Codex');
+const hasCodex = existsSync(CODEX);
+if (hasCodex) {
+  const toml = join(CODEX, 'config.toml'); backupCopy(toml);
   let t = existsSync(toml) ? readFileSync(toml, 'utf8') : '';
   const block = `[mcp_servers.adobe]\ncommand = "${NODE}"\nargs = ["${RUNTIME}"]\n`;
   t = /^\[mcp_servers\.adobe\]/m.test(t) ? t.replace(/^\[mcp_servers\.adobe\]\n(?:(?!\[)[^\n]*\n?)*/m, block + '\n') : t + (t && !t.endsWith('\n') ? '\n' : '') + '\n' + block;
   writeFileSync(toml, t); say('adobe MCP registered');
-  place(SKILL, join(codexDir, 'skills', 'ynot-artwork-spec'), !!prev);
+  place(SKILL, join(CODEX, 'skills', 'ynot-artwork-spec'), !!prev);
 } else say('not installed: skipped');
 
-console.log('Claude Code');
+log('Claude Code');
 const ccSkill = join(HOME, '.claude', 'skills', 'ynot-artwork-spec');
 let cli = true; try { run('claude', ['--version']); } catch { cli = false; }
-if (AS_PLUGIN) { // the plugin already provides skill + MCP: remove copies from older installs so nothing is doubled
+if (AS_PLUGIN) { // the plugin provides skill + MCP: remove copies from older installs so nothing is doubled
   let st = null; try { st = lstatSync(ccSkill); } catch {}
   if (st?.isSymbolicLink()) { unlink(ccSkill); say('removed old skill link (the plugin provides it)'); }
   else if (st) backup(ccSkill);
@@ -123,4 +134,7 @@ if (AS_PLUGIN) { // the plugin already provides skill + MCP: remove copies from 
 
 mkdirSync(YNOT, { recursive: true });
 writeFileSync(STAMP, JSON.stringify({ version: VERSION, at: new Date().toISOString(), from: fwd(ROOT) }, null, 2));
-console.log(`\nDone (version ${VERSION}). Restart Illustrator/Photoshop${existsSync(dirname(desk)) ? ', Claude Desktop' : ''}${existsSync(codexDir) ? ', Codex' : ''}.`);
+const apps = ['Illustrator/Photoshop', hasDesk && 'Claude Desktop', hasCodex && 'Codex'].filter(Boolean).join(', ');
+if (AUTO) console.log(`Y-Not artwork plugin: ${prev ? 'updated' : 'installed'} the Adobe MCP Bridge${hasDesk ? ', Claude Desktop' : ''}${hasCodex ? ', Codex' : ''} setup (version ${VERSION}). ` +
+  `Tell the user once, in plain words: restart ${apps} so it takes effect` + (hasDesk ? `; and for the Claude Desktop chat app, upload ${ZIP} in Settings > Capabilities > Skills (one time)` : '') + '.');
+else console.log(`\nDone (version ${VERSION}). Restart ${apps}.` + (hasDesk ? ` Claude Desktop chat app: upload ${ZIP} in Settings > Capabilities > Skills (one time).` : ''));

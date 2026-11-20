@@ -5,6 +5,9 @@ description: One-time (and after-update) setup of the Y-Not artwork plugin on th
 
 # Y-Not setup
 
+Normally nothing to do: the plugin runs this setup by itself at session start (first session, and after updates) and
+prints one line saying what to restart. Use this skill when that line said it failed, or the user asks.
+
 1. Run: `node "${CLAUDE_PLUGIN_ROOT}/setup.mjs"` and show the user its output.
    It copies the Adobe extension into the CEP extensions folder, enables unsigned CEP extensions (PlayerDebugMode),
    copies the adobe MCP to `~/.ynot/adobe-mcp` and registers it for Claude Desktop and Codex, copies the artwork skill

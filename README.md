@@ -6,32 +6,21 @@ Claude plugins for the Y-Not design team. Each plugin is one folder; today there
 |---|---|
 | `ynot-artwork/` | Builds Y-Not artwork / spec sheets in Illustrator from a mockup PPT + logos (Design SOP): Pantone matching, logo sizes, mockup dimensions, box dielines, QC. Includes the **adobe MCP** that lets Claude drive Illustrator, Photoshop, After Effects, Premiere and Audition. |
 
-## Install on a PC (Windows or Mac)
+## Install (Windows or Mac, 2 minutes)
 
-Needs [Node.js 18+](https://nodejs.org) and Adobe Illustrator. For PPT reading: Python 3 + `pip install python-pptx`.
-For Pantone matching: Chrome signed in to connect.pantone.com.
+Open Claude Code, Codex or the Claude desktop app (Code tab), paste this and answer its questions:
 
-**Claude Code** (terminal, or the Code tab of the Claude desktop app). Type in Claude:
-```
-/plugin install ynot-artwork --marketplace Omkarynot/ynot-skills
-```
-(older Claude Code: `/plugin marketplace add Omkarynot/ynot-skills`, then `/plugin install ynot-artwork@ynot-skills`)
+> Install the Y-Not artwork tools by following https://github.com/Omkarynot/ynot-skills/blob/main/INSTALL.md
 
-Then ask Claude: **"run ynot setup"**. It installs the Adobe extension and also sets up Claude Desktop chat and
-Codex if they're on the PC. Restart Illustrator/Photoshop afterwards. That's all.
+The agent installs Node.js if needed, the plugin, the Adobe extension, and the Claude Desktop / Codex setup.
+Then quit and reopen Illustrator. Manual steps are in [INSTALL.md](INSTALL.md).
 
-**Only Claude Desktop chat or Codex, no Claude Code:** download this repo (Code > Download ZIP), unzip, and run
-```
-node ynot-skills-main/ynot-artwork/setup.mjs
-```
-then restart Illustrator and the app. For Claude Desktop chat, also upload `~/.ynot/ynot-artwork-spec.zip` in
-Settings > Capabilities > Skills.
-
-Check: ask Claude to call the adobe `status` tool; Illustrator should be listed with its version.
+Already have Claude Code? `/plugin install ynot-artwork --marketplace Omkarynot/ynot-skills` is enough: the plugin
+finishes its own setup at the next session start and tells you what to restart.
 
 ## Update
-Claude Code: `/plugin` > Marketplaces > ynot-skills > Update (or turn on auto-update there). After an update Claude
-reminds you to "run ynot setup" again if the Adobe extension changed. Desktop/Codex: download again and re-run `setup.mjs`.
+Claude Code: `/plugin` > Marketplaces > ynot-skills > Update (or turn on auto-update there); setup re-runs by itself.
+Codex / Claude Desktop: paste the install sentence again.
 
 ## For whoever edits the plugin
 - Everything for a plugin stays inside its folder. No absolute paths to someone's PC.
