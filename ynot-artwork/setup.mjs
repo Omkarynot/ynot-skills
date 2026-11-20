@@ -21,7 +21,11 @@ const YNOT = join(HOME, '.ynot'), STAMP = join(YNOT, 'installed.json'), BAK = jo
 const CEP = WIN ? join(process.env.APPDATA, 'Adobe', 'CEP', 'extensions') : join(HOME, 'Library', 'Application Support', 'Adobe', 'CEP', 'extensions');
 const EXT_AT = join(CEP, 'com.adobemcp.bridge');
 const fwd = p => p.replace(/\\/g, '/'), NODE = fwd(process.execPath), RUNTIME = fwd(join(YNOT, 'adobe-mcp', 'server.bundle.mjs'));
-const AS_PLUGIN = /[\\/]\.claude[\\/]plugins[\\/]/.test(ROOT);
+// Plugin mode when run from the installed plugin, or when the plugin is installed at all: Claude Code then gets the
+// skill + MCP from the plugin, and copies would show up twice.
+let pluginInstalled = false;
+try { pluginInstalled = /"ynot-artwork@/.test(readFileSync(join(HOME, '.claude', 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
+const AS_PLUGIN = /[\\/]\.claude[\\/]plugins[\\/]/.test(ROOT) || pluginInstalled;
 const say = m => console.log('  ' + m);
 
 // Version of what this script installs = hash of those files.
